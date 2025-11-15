@@ -18,9 +18,8 @@ import sys
 import json
 from collections import Counter, defaultdict
 
-from bs4 import BeautifulSoup   # pip install beautifulsoup4
-from nltk.stem import PorterStemmer  # pip install nltk
-# The first time you ever use nltk, you may need to run:
+from bs4 import BeautifulSoup
+from nltk.stem import PorterStemmer
 #   >>> import nltk; nltk.download('punkt')
 
 # ---------- Tokenization / Normalization helpers ----------
@@ -30,12 +29,12 @@ TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
 stemmer = PorterStemmer()
 
 
-def extract_visible_text(html_bytes):
+def extract_visible_text(html):
     """
     Parse (possibly broken) HTML and return visible text as a single string.
     We ignore scripts/styles etc.
     """
-    soup = BeautifulSoup(html_bytes, "html.parser")
+    soup = BeautifulSoup(html, "html.parser")
 
     # Remove script and style elements – their text is not useful for search.
     for tag in soup(["script", "style", "noscript"]):
@@ -64,13 +63,11 @@ def tokenize(text):
 
 # ---------- Index construction ----------
 
-def traverse_html_files(root_dir):
-    """
-    Yield full paths to all .html / .htm files under root_dir.
-    """
-    for dirpath, _, filenames in os.walk(root_dir):
+def traverse_json_files(root_dir):
+    """Yield full paths to all .json files under root_dir."""
+    for dirpath, dirnames, filenames in os.walk(root_dir):
         for name in filenames:
-            if name.lower().endswith((".html", ".htm")):
+            if name.lower().endswith(".json"):
                 yield os.path.join(dirpath, name)
 
 
@@ -86,19 +83,30 @@ def build_inverted_index(root_dir):
     doc_id_map = {}                 # doc_id -> file_path
     next_doc_id = 0
 
-    for file_path in traverse_html_files(root_dir):
+    for file_path in traverse_json_files(root_dir):
         next_doc_id += 1
         doc_id = next_doc_id
         doc_id_map[doc_id] = file_path
 
         try:
-            with open(file_path, "rb") as f:
-                html_bytes = f.read()
+            with open(file_path, "r", encoding="utf-8") as f:
+                page = json.load(f)
         except Exception as e:
-            print(f"[WARN] Could not read {file_path}: {e}", file=sys.stderr)
+            print(f"[WARN] Could not read/parse {file_path}: {e}", file=sys.stderr)
             continue
 
-        text = extract_visible_text(html_bytes)
+        # Adjust these keys JSON schema is slightly different.
+        html = (
+            page.get("content")
+            or page.get("html")
+            or ""
+        )
+
+        # For doc_id_map, identified by their URLs”)
+        url = page.get("url", file_path)
+        doc_id_map[doc_id] = url
+
+        text = extract_visible_text(html)
         tokens = tokenize(text)
 
         # term frequency in this document
