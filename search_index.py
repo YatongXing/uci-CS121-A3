@@ -6,7 +6,7 @@ Milestone 2: simple Boolean (AND-only) retrieval over the inverted index
 built in Milestone 1.
 
 Usage:
-    python search_index.py index.json doc_ids.json
+    python3 search_index.py index.json doc_ids.json
 
 Then type queries at the prompt, e.g.
     cristina lopes
