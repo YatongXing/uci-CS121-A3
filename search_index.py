@@ -21,9 +21,7 @@ import sys
 import json
 import math
 from pathlib import Path
-
-# --- reuse the tokenizer / stemmer from MS1 ---
-from build_index import tokenize   # assumes build_index.py is in same folder
+from build_index import tokenize
 
 
 # ---------- Loading index & doc-id map ----------
