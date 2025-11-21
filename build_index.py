@@ -5,7 +5,7 @@ build_index.py
 Milestone 1: build a simple in-memory inverted index over a corpus of HTML pages.
 
 Usage:
-    python build_index.py /path/to/DEV index.json doc_ids.json
+    python3 build_index.py /path/to/DEV index.json doc_ids.json
 
 - /path/to/DEV: root folder that contains many subfolders of HTML pages
 - index.json:  output file where the inverted index will be stored
