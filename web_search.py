@@ -5,13 +5,15 @@ web_search.py
 Simple web interface for your search engine (Milestone 3 extra credit).
 
 Usage:
-    python3 web_search.py OUT_DIR
+    python3 web_search.py out_index
 
-where OUT_DIR is the directory produced by build_index.py
+where out_index is the directory produced by build_index.py
 containing:
   - docinfo.json
   - lexicon.json, postings.bin
-  - (optionally) lexicon2.json, postings2.bin
+  - lexicon2.json, postings2.bin
+
+open http://127.0.0.1:5000/ in local browser
 """
 
 import sys
@@ -19,9 +21,9 @@ import heapq
 
 from flask import Flask, request, render_template_string
 
-# Reuse tokenizer and all search helpers from your existing code
+# Reuse tokenizer and all search helpers
 from build_index import tokenize
-import search_index as si   # we'll use si.unigram_cosine, si.bigram_cosine, ...
+import search_index as si
 
 
 # ---------- command-line args & global data ----------
