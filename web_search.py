@@ -2,31 +2,29 @@
 """
 web_search.py
 
-Simple web interface for your search engine (Milestone 3 extra credit).
+Simple web interface for the search engine (Milestone 3 extra credit).
 
 Usage:
-    python3 web_search.py out_index
+    python3 web_search.py OUT_DIR
 
-where out_index is the directory produced by build_index.py
-containing:
+OUT_DIR is the directory produced by build_index.py, containing:
   - docinfo.json
   - lexicon.json, postings.bin
   - lexicon2.json, postings2.bin
 
-open http://127.0.0.1:5000/ in local browser
+
+open browser in http://127.0.0.1:5000/
 """
 
 import sys
-import heapq
 
 from flask import Flask, request, render_template_string
 
-# Reuse tokenizer and all search helpers
+# Reuse tokenizer + search pipeline
 from build_index import tokenize
-import search_index as si
+import search_index as si   # use si.load_meta, si.search_one_pass, etc.
 
-
-# ---------- command-line args & global data ----------
+# ---------- CLI args + global data ----------
 
 if len(sys.argv) != 2:
     print("Usage: python3 web_search.py OUT_DIR")
@@ -35,9 +33,8 @@ if len(sys.argv) != 2:
 OUT_DIR = sys.argv[1]
 
 print(f"Loading metadata from {OUT_DIR} ...")
-docinfo, lex1, lex2 = si.load_meta(OUT_DIR)
-print(f"Loaded {len(docinfo)} documents.")
-
+DOCINFO, LEX1, LEX2 = si.load_meta(OUT_DIR)
+print(f"Loaded {len(DOCINFO)} documents.")
 
 # ---------- Flask app ----------
 
@@ -104,7 +101,7 @@ PAGE_TEMPLATE = """
 
   {% if query %}
     {% if results %}
-      <p>Showing top {{ results|length }} results for <b>{{ query|e }}</b>:</p>
+      <p>Showing {{ results|length }} results for <b>{{ query|e }}</b>:</p>
       {% for r in results %}
         <div class="result">
           <div><a href="{{ r.url }}" target="_blank">{{ r.url }}</a></div>
@@ -119,7 +116,7 @@ PAGE_TEMPLATE = """
   {% endif %}
 
   <div class="footer">
-    Backend: disk-based tf-idf cosine + bigram + phrase boost (same as CLI).
+    Backend: disk-based tf-idf cosine + bigram + phrase boost (same logic as CLI).
   </div>
 </body>
 </html>
@@ -135,63 +132,14 @@ def search_page():
         q_terms = tokenize(query)
 
         if q_terms:
-            # ---- 1) unigram scores + position info + term_docs ----
-            uni_scores, pos_str_by_term, term_docs = si.unigram_cosine(q_terms, docinfo, lex1, OUT_DIR)
+            # Use your single-pass search pipeline
+            top, cand_count = si.search_one_pass(
+                q_terms, DOCINFO, LEX1, LEX2, OUT_DIR
+            )
 
-            if uni_scores:
-                # For phrase boost we follow your interactive() logic:
-
-                # phrase_boost is only computed on top PHRASE_DOC_LIMIT unigram docs
-                if len(uni_scores) > si.PHRASE_DOC_LIMIT:
-                    top_for_phrase = heapq.nlargest(
-                        si.PHRASE_DOC_LIMIT, uni_scores.items(), key=lambda x: x[1]
-                    )
-                    phrase_allowed = {d for d, _ in top_for_phrase}
-                else:
-                    phrase_allowed = set(uni_scores.keys())
-
-                # ---- 2) bigram scores ----
-                bi_scores = si.bigram_cosine(q_terms, docinfo, lex2, OUT_DIR)
-
-                # ---- 3) phrase boost (restricted docs) ----
-                boosts = si.phrase_boost(
-                    q_terms, pos_str_by_term, allowed_docs=phrase_allowed
-                )
-
-                # ---- 4) multi-stage candidate selection ----
-                all_docs_base = set(uni_scores.keys()) | set(bi_scores.keys()) | set(boosts.keys())
-                phrase_docs = {d for d, b in boosts.items() if b > 0.0}
-
-                if len(phrase_docs) >= si.MIN_RESULTS:
-                    candidate_docs = phrase_docs
-                else:
-                    and_docs = si.boolean_and_candidates(q_terms, term_docs)
-                    candidate_docs = phrase_docs | and_docs
-
-                    if len(candidate_docs) < si.MIN_RESULTS:
-                        candidate_docs = all_docs_base
-
-                if len(candidate_docs) > si.MAX_CANDIDATES:
-                    top_candidates = heapq.nlargest(
-                        si.MAX_CANDIDATES,
-                        candidate_docs,
-                        key=lambda d: uni_scores.get(d, 0.0),
-                    )
-                    candidate_docs = set(top_candidates)
-
-                # ---- 5) combine scores only for candidates ----
-                combined = {}
-                for d in candidate_docs:
-                    combined[d] = (
-                        si.ALPHA_UNI * uni_scores.get(d, 0.0)
-                        + si.BETA_BI  * bi_scores.get(d, 0.0)
-                        + boosts.get(d, 0.0)
-                    )
-
-                top = heapq.nlargest(20, combined.items(), key=lambda x: x[1])
-
+            if top:  # list of (doc_id, score)
                 for doc_id, score in top:
-                    url = docinfo.get(doc_id, {}).get("url", f"doc:{doc_id}")
+                    url = DOCINFO.get(doc_id, {}).get("url", f"doc:{doc_id}")
                     results.append({
                         "doc_id": doc_id,
                         "score": score,
@@ -202,5 +150,5 @@ def search_page():
 
 
 if __name__ == "__main__":
-    # debug=True is convenient while you're developing
-    app.run(debug=True)
+    # debug=True is convenient while developing;
+    app.run(debug=False)
