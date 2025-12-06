@@ -24,7 +24,7 @@ from flask import Flask, request, render_template_string
 from build_index import tokenize
 import search_index as si   # use si.load_meta, si.search_one_pass, etc.
 
-# ---------- CLI args + global data ----------
+# CLI args + global data
 
 if len(sys.argv) != 2:
     print("Usage: python3 web_search.py OUT_DIR")
@@ -36,7 +36,7 @@ print(f"Loading metadata from {OUT_DIR} ...")
 DOCINFO, LEX1, LEX2 = si.load_meta(OUT_DIR)
 print(f"Loaded {len(DOCINFO)} documents.")
 
-# ---------- Flask app ----------
+# Flask app
 
 app = Flask(__name__)
 
