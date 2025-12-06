@@ -21,7 +21,8 @@ from collections import Counter, defaultdict
 from urllib.parse import urljoin, urldefrag, urlparse, urlunparse
 from bs4 import BeautifulSoup
 from nltk.stem import PorterStemmer
-
+import warnings
+from bs4 import XMLParsedAsHTMLWarning, MarkupResemblesLocatorWarning
 # ------------------ Tokenization / Stemming ------------------
 TOKEN_RE = re.compile(r"[A-Za-z0-9]+")
 stemmer = PorterStemmer()
@@ -36,7 +37,9 @@ def tokenize(text: str):
 
 # ------------------ HTML Parsing ------------------
 def soup_from_html(html: str):
-    return BeautifulSoup(html or "", "html.parser")
+    warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+    warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
+    return BeautifulSoup(html or "", "lxml")
 
 def extract_zones(soup: BeautifulSoup):
     # remove non-visible conditions
